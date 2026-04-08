@@ -34,14 +34,7 @@ Augments a spec analysis with live Figma cross-references. Answers the question:
 
 #### Step 1: Produce design companion
 
-Follow the `spec-design-interpreter` workflow:
-1. Identify the key decision that most affects design scope
-2. Summarize technical changes (before/after)
-3. Identify confirmed screens and screens implied
-4. Surface open questions (blocking vs. important)
-5. List next steps
-
-If a design companion already exists (from a prior `spec-design-interpreter` or `design-brief` run), use it as input instead of re-analyzing.
+Run the `spec-design-interpreter` skill to produce a design companion from the spec. If a design companion already exists (from a prior `spec-design-interpreter` or `design-brief` run), use it as input instead of re-analyzing.
 
 #### Step 2: Extract queryable terms
 
@@ -173,22 +166,11 @@ See `references/mapping-rules.md` for the complete mapping table.
 
 ### Audit Mode (read-only)
 
-Compare code tokens against Figma tokens without making changes:
-
-```
-Token Sync Audit — [Project Name]
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-In sync:     47 tokens
-Drifted:      3 tokens
-  --color-brand-primary: code=#2563EB, figma=#3B82F6
-  --spacing-lg: code=2rem, figma=1.5rem
-  --font-size-h1: code=3rem, figma=2.5rem
-Missing in Figma:  5 tokens
-  --color-status-warning, --spacing-2xl, ...
-Missing in code:   2 tokens
-  color/brand/accent, spacing/inset/card
-```
+Compare code tokens against Figma tokens without making changes. Report:
+- In sync: count of tokens with identical values
+- Drifted: tokens present in both but with differing values (show code value vs Figma value)
+- Missing in Figma: tokens in code not found in Figma
+- Missing in code: tokens in Figma not found in code
 
 Also check for:
 - Unused aliases (tokens that reference but are never referenced)

@@ -7,7 +7,7 @@ description: Use when binding unbound fills, strokes, or corner radii in Figma c
 
 ## Overview
 
-Scans component definitions for unbound fill colors, stroke colors, and corner radii, then binds them to the appropriate design system variables. Runs in four phases to keep scripts focused and recoverable.
+Scans component definitions for unbound fill colors, stroke colors, and corner radii, then binds them to the appropriate design system variables. Runs in five phases to keep scripts focused and recoverable.
 
 Requires `figma-use` skill before any `use_figma` call.
 
@@ -17,7 +17,7 @@ Requires `figma-use` skill before any `use_figma` call.
 Discover IDs → Resolve hex values → Scan unbound → Bind by property type → Verify
 ```
 
-Four phases, always in order. Never skip phases.
+Five phases, always in order. Never skip phases on a fresh run. If re-running a partial bind with already-validated IDs, phases 1–2 may be skipped.
 
 **Stop and confirm with the user before binding when:**
 - A color has no obvious variable match by hex value
@@ -40,13 +40,28 @@ Four phases, always in order. Never skip phases.
 
 ---
 
+---
+
+## Page Name Configuration
+
+All phase scripts target a specific Figma page by name. Before running any phase, confirm the correct page name. Check `.claude/figma-config.json` for `componentsPage` — if set, use that value. Otherwise default to `"Components"`.
+
+Set this constant at the top of each phase script:
+```js
+const COMPONENTS_PAGE = "Components"; // from figma-config.json > componentsPage
+```
+
+---
+
 ## Phase 1 — Discover Variable IDs
 
 **Do not use IDs from memory.** Always discover fresh from what's already bound in the file.
 
 ```js
+const COMPONENTS_PAGE = "Components"; // from figma-config.json > componentsPage
+
 // Collect all variable IDs currently bound in COMPONENT nodes on the target page
-const compPage = figma.root.children.find(p => p.name === "Components");
+const compPage = figma.root.children.find(p => p.name === COMPONENTS_PAGE);
 if (!compPage) return { error: "Components page not found" };
 await figma.setCurrentPageAsync(compPage);
 
@@ -154,8 +169,10 @@ Use the resolved hex values to build your color → variable map in the binding 
 Run this before binding to understand scope. Groups unbound colors by hex and counts instances.
 
 ```js
-const compPage = figma.root.children.find(p => p.name === "Components");
-if (!compPage) return { error: "Components page not found" };
+const COMPONENTS_PAGE = "Components"; // from figma-config.json > componentsPage
+
+const compPage = figma.root.children.find(p => p.name === COMPONENTS_PAGE);
+if (!compPage) return { error: `Page "${COMPONENTS_PAGE}" not found` };
 await figma.setCurrentPageAsync(compPage);
 
 function toHex(c) {
@@ -216,7 +233,8 @@ For each high-count color:
 
 ```js
 // Replace TARGET_HEX with the 6-char hex to investigate
-const compPage = figma.root.children.find(p => p.name === "Components");
+const COMPONENTS_PAGE = "Components"; // from figma-config.json > componentsPage
+const compPage = figma.root.children.find(p => p.name === COMPONENTS_PAGE);
 await figma.setCurrentPageAsync(compPage);
 
 const target = "172b85"; // example
@@ -252,8 +270,10 @@ Run as four separate scripts. Each is independent and recoverable if it fails.
 ### 4a. Text fills
 
 ```js
-const compPage = figma.root.children.find(p => p.name === "Components");
-if (!compPage) return { error: "Components page not found" };
+const COMPONENTS_PAGE = "Components"; // from figma-config.json > componentsPage
+
+const compPage = figma.root.children.find(p => p.name === COMPONENTS_PAGE);
+if (!compPage) return { error: `Page "${COMPONENTS_PAGE}" not found` };
 await figma.setCurrentPageAsync(compPage);
 
 // Paste IDs from Phase 2 validation
@@ -313,16 +333,69 @@ return { boundTotal: bound.length, tally, errorCount: errors.length, errors: err
 
 ### 4b. Surface fills
 
-Same structure as 4a, but filter to `FRAME`, `RECTANGLE`, `ELLIPSE`, `COMPONENT`, `COMPONENT_SET` node types (not `VECTOR`, `BOOLEAN_OPERATION`). Skip `isMask` nodes and fills with `opacity < 0.99` for white.
-
 ```js
-const SURFACE_TYPES = new Set(["FRAME", "RECTANGLE", "ELLIPSE", "COMPONENT"]);
+const COMPONENTS_PAGE = "Components"; // from figma-config.json > componentsPage
 
-// ... (same pattern as 4a, filtered by SURFACE_TYPES and !node.isMask)
+const compPage = figma.root.children.find(p => p.name === COMPONENTS_PAGE);
+if (!compPage) return { error: `Page "${COMPONENTS_PAGE}" not found` };
+await figma.setCurrentPageAsync(compPage);
+
+// Paste IDs from Phase 2 validation
+const varDefs = {
+  surfacePrimary:   "VariableID:xx:xxxx",  // #ffffff (example)
+  surfaceSecondary: "VariableID:xx:xxxx",
+  surfaceAccent:    "VariableID:xx:xxxx",
+  // ... add all needed surface variables
+};
+const V = {};
+for (const [k, id] of Object.entries(varDefs)) {
+  V[k] = await figma.variables.getVariableByIdAsync(id);
+  if (!V[k]) return { error: `Failed to load: ${k}` };
+}
+
+// hex (no #) → variable key — built from Phase 2 resolved values
+const colorMap = {
+  "ffffff": "surfacePrimary",
+  // ... fill in from Phase 2 hex results
+};
+
+function toHex8(c) {
+  return [c.r,c.g,c.b].map(v=>Math.round(v*255).toString(16).padStart(2,'0')).join('');
+}
+
+const SURFACE_TYPES = new Set(["FRAME", "RECTANGLE", "ELLIPSE", "COMPONENT"]);
+const bound = [], errors = [];
 
 const candidates = compPage.findAll(n =>
-  SURFACE_TYPES.has(n.type) && !n.id.includes(';')
+  SURFACE_TYPES.has(n.type) && !n.id.includes(';') && !n.isMask
 );
+
+for (const node of candidates) {
+  if (node.fills === figma.mixed || !Array.isArray(node.fills)) continue;
+  let fills = [...node.fills];
+  let changed = false;
+  for (let i = 0; i < fills.length; i++) {
+    const fill = fills[i];
+    if (fill.type !== 'SOLID') continue;
+    // Skip near-transparent white — likely a ghost or overlay, not a surface token
+    if (fill.color.r > 0.99 && fill.color.g > 0.99 && fill.color.b > 0.99 && (fill.opacity ?? 1) < 0.99) continue;
+    if (node.boundVariables?.fills?.[i]?.id) continue;
+    const varKey = colorMap[toHex8(fill.color)];
+    if (!varKey) continue;
+    try {
+      fills[i] = figma.variables.setBoundVariableForPaint(fills[i], 'color', V[varKey]);
+      changed = true;
+      bound.push({ varKey, hex: toHex8(fill.color) });
+    } catch (e) { errors.push({ nodeId: node.id, err: e.message.slice(0,80) }); }
+  }
+  if (changed) {
+    try { node.fills = fills; } catch (e) { errors.push({ phase: 'assign', err: e.message.slice(0,80) }); }
+  }
+}
+
+const tally = {};
+for (const b of bound) tally[b.varKey] = (tally[b.varKey]||0)+1;
+return { boundTotal: bound.length, tally, errorCount: errors.length, errors: errors.slice(0,5) };
 ```
 
 ### 4c. Strokes
@@ -355,8 +428,10 @@ for (const node of candidates) {
 ### 4d. Corner radii
 
 ```js
-const compPage = figma.root.children.find(p => p.name === "Components");
-if (!compPage) return { error: "Components page not found" };
+const COMPONENTS_PAGE = "Components"; // from figma-config.json > componentsPage
+
+const compPage = figma.root.children.find(p => p.name === COMPONENTS_PAGE);
+if (!compPage) return { error: `Page "${COMPONENTS_PAGE}" not found` };
 await figma.setCurrentPageAsync(compPage);
 
 const varDefs = {
@@ -378,7 +453,7 @@ function getCornerVar(val) {
   if (Math.abs(val - 8)   < 0.5) return 'cornerSmall';
   if (Math.abs(val - 12)  < 0.5) return 'cornerBase';
   if (Math.abs(val - 20)  < 0.5) return 'cornerLarge';
-  if (Math.abs(val - 100) < 0.5 || val > 10000) return 'cornerFull';  // 16777200 = Figma's "full"
+  if (Math.abs(val - 100) < 0.5 || val > 10000) return 'cornerFull';  // Figma stores "full" corner radius as 16777200 internally
   return null;
 }
 

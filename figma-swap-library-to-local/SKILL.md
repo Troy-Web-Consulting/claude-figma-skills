@@ -77,12 +77,13 @@ Review the result. For each remote component set, verify a local equivalent exis
 
 ```js
 // Fill in set names and standalone names from Phase 1 results
+const COMPONENTS_PAGE = "Components"; // from figma-config.json > componentsPage
 const targetSetNames = new Set(["Icons", "Buttons" /* etc */]);
 const targetStandalones = new Set(["Drawer header" /* etc */]);
 const idMap = {};
 
 for (const page of figma.root.children) {
-  if (page.name !== "Components") continue;
+  if (page.name !== COMPONENTS_PAGE) continue;
   await figma.setCurrentPageAsync(page);
   const allNodes = page.findAll(n => n.type === "COMPONENT_SET" || n.type === "COMPONENT");
   for (const node of allNodes) {

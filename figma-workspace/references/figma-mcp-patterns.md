@@ -16,16 +16,13 @@ Accumulated patterns from building, maintaining, and automating design systems. 
 
 - **Code Connect is plan-gated** — Code Connect (mapping Figma components to repo components with import paths and prop mappings) requires Organization or Enterprise plan. Professional plan gets all read tools but no Code Connect enrichment. This is the single biggest capability gap between plan tiers for agentic workflows
 
-- **Rate limits are real constraints** — Professional Full/Dev seats get 200 tool calls/day with per-minute caps. Enterprise gets 600/day. In practice, a design-heavy session can exhaust the daily limit in surprisingly few calls. Workaround: use design briefs and documentation as the source of truth for prompt writing rather than inspecting Figma files directly
+- **Rate limits are real constraints** — Figma enforces per-day and per-minute call limits that vary by plan and seat type (check current Figma developer docs for exact numbers). In practice, a design-heavy session can exhaust the daily limit in surprisingly few calls. Workaround: use design briefs and documentation as the source of truth for prompt writing rather than inspecting Figma files directly
 
 - **Code-to-Figma requires desktop app** — Writing back to Figma (capturing rendered HTML into Figma frames) requires the desktop app running and a Dev or Full seat. This enables review loops: generate code from Figma, render in browser, capture back into Figma for comparison
 
 - **Unrendered tokens are invisible** — Figma's visual-first pipeline means tokens that are defined but not applied to visible elements won't appear in MCP responses. The MCP server reports what's used in the design, not everything that exists in the file. Token auditing requires the Variables API or Tokens Studio export, not MCP reads
 
-- **Token pushing needs Tokens Studio, not MCP** — The MCP server reads tokens but doesn't write them back to Figma Variables. Bidirectional token sync (code changes propagating to Figma) requires either:
-  - Variables REST API (Enterprise only)
-  - Tokens Studio plugin with GitHub sync (any plan)
-  - MCP itself is read-only for tokens
+- **Token write options** — Token sync from code → Figma can be done via: `use_figma` with `figma.variables.createVariable()` (Plugin API, all plans), the Variables REST API (Enterprise only), or Tokens Studio plugin with GitHub sync (any plan). The `figma-project-bridge` skill covers the Plugin API write path.
 
 - **Skills encode implementation discipline** — Figma's "Skills" are reusable instruction sets that sequence MCP tool calls. They don't add capabilities but encode repeatable workflows (implement design, create rules, map components). Use them to ensure agents follow the same process every time rather than improvising
 
@@ -82,16 +79,6 @@ Never recreate a component that already exists in the library.
 
 ---
 
-## Figma Make
-
-- **Regenerates whole screens on partial updates** — Explicitly state "do not change [specific sections]" to limit scope
-- **Visual anchoring is required** — Always open the target file before prompting; Figma Make invents its own design system from scratch when given only a spec doc
-- **Pattern-map technique for extensions** — Provide a 1:1 mapping table ("new screen X = existing screen Y") for more accurate output than describing the visual system abstractly
-- **Design briefs become prompt source of truth** — When rate limits constrain direct Figma inspection, written design briefs are more token-efficient than screenshot analysis
-- **Content accuracy precedes visual fidelity** — Plan for a two-pass workflow: content/flow first, visual fidelity second
-
----
-
 ## Figma Plugin Architecture
 
 - **Two-thread sandbox** — Main thread: Figma document API (no DOM). UI thread: renders HTML/CSS/JS (no Figma API). Communication via `postMessage` only
@@ -136,7 +123,6 @@ Never recreate a component that already exists in the library.
 
 ## Agentic Design Workflow
 
-- **Four-agent pattern** — (1) Design Context Agent: reads Figma via MCP. (2) Component Mapping Agent: maps Figma → code via Code Connect. (3) Implementation Agent: writes code bound by rules. (4) Drift Auditor Agent: verifies via visual regression, token usage, prop parity
 - **Screenshot-to-API heuristic** — Before analyzing a UI via screenshot, always check if there's an API returning structured data. Screenshots exhaust context windows; use as last resort
 - **AI behavior as diagnostic data** — When an agent consistently misapplies a component, that's a signal the design system needs better documentation, not just a model failure
 - **Higher-order compositions outperform naked primitives** — Define named patterns (a "card" block, a "form section"). AI composes coherently from named patterns; it struggles from individual atoms

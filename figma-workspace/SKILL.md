@@ -25,9 +25,8 @@ For binding unbound fills, strokes, and corner radii to design system variables,
 
 Before anything else, verify this project is wired up:
 
-1. Does `.claude/skills/figma-workspace` exist in the project? If not: `ln -s ~/.config/claude/skill-library/skills/figma-workspace .claude/skills/figma-workspace`
-2. Does `.claude/figma-config.json` exist? If not: ask the user for the Figma fileKey, then create it (schema below)
-3. Does `docs/figma-registry.json` exist? If not: create a skeleton after the first session
+1. Does `.claude/figma-config.json` exist? If not: ask the user for the Figma fileKey, then create it (schema below)
+2. Does `docs/figma-registry.json` exist? If not: create a skeleton after the first session
 
 Only run this check once — subsequent invocations skip straight to the registry lookup.
 
@@ -52,6 +51,7 @@ Also check for `.claude/figma-config.json` in the project root. If present, it o
   "registryPath": "docs/figma-registry.json",
   "fileKey": "gXWSfKn5TelgViNAz8hEDe",
   "knownPages": ["Design System", "Pages", "Composed"],
+  "componentsPage": "Components",
   "clearBetweenSegments": true
 }
 ```
@@ -144,13 +144,13 @@ Figma tool results accumulate in context for the entire session. Each result sta
 - Library components: `figma_instantiate_component` with `componentKey`
 - Local components: `figma_instantiate_component` with BOTH `componentKey` + `nodeId`
 - Use VARIANT keys, never COMPONENT_SET keys
-- Re-search before instantiating (nodeIds are session-specific)
+- Component keys and node IDs are permanent — if the registry has them, use directly without re-searching
 
 ---
 
 ## Step 3: Gather Context
 
-Run this audit sequence before any write operation. Skip steps that aren't relevant to the task at hand.
+Before any write operation, run only the steps below that are relevant to your task. These have real token cost — don't run steps you don't need.
 
 ### 3a. Component inventory
 
@@ -188,7 +188,7 @@ Output: what already exists where you're about to build, canvas positions of exi
 
 ### Universal patterns
 
-Read `references/figma-mcp-patterns.md` (ships with this skill) — MCP tool selection rules, rate limits, write operation patterns, token architecture, agentic workflow conventions.
+Consult `references/figma-mcp-patterns.md` when you need MCP tool selection rules, rate limit information, write operation patterns, or token architecture guidance. Skip this read if those topics aren't relevant to the current task.
 
 ### Project-specific context
 

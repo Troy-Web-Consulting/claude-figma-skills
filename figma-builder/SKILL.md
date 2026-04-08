@@ -18,20 +18,6 @@ Codified rules and patterns for creating, extending, and bulk-modifying Figma co
 
 ---
 
-## Capture + Canvas Sequencing Rule
-
-**When doing multi-page web captures (code→Figma):** never interleave `use_figma` canvas writes with capture polling. The Figma plugin processes one operation at a time — `use_figma` calls preempt the capture queue and cause silent failures.
-
-**Correct order:**
-1. Generate all capture IDs upfront (parallel `generate_figma_design` calls)
-2. Fire all captures (navigate + `captureForDesign`)
-3. Poll all to `completed` — no `use_figma` calls in between
-4. Do all renames, moves, and layout in one `use_figma` call at the end
-
-**Also:** Always call `await figma.setCurrentPageAsync(page)` before reading `page.children`. Figma lazy-loads page node trees — without this, `children.length` returns 0 even when frames exist.
-
----
-
 ## Pre-flight Checklist
 
 Before creating anything:
@@ -209,6 +195,20 @@ Accumulate across batches. After all batches, report summary.
 4. Never cache nodeIds across batches — they shift after writes
 
 See `references/batch-patterns.md` for complete patterns.
+
+---
+
+## Multi-page Capture Sequencing
+
+**Only relevant when doing web-to-Figma captures (code→Figma).** Never interleave `use_figma` canvas writes with capture polling. The Figma plugin processes one operation at a time — `use_figma` calls preempt the capture queue and cause silent failures.
+
+**Correct order:**
+1. Generate all capture IDs upfront (parallel `generate_figma_design` calls)
+2. Fire all captures (navigate + `captureForDesign`)
+3. Poll all to `completed` — no `use_figma` calls in between
+4. Do all renames, moves, and layout in one `use_figma` call at the end
+
+**Also:** Always call `await figma.setCurrentPageAsync(page)` before reading `page.children`. Figma lazy-loads page node trees — without this, `children.length` returns 0 even when frames exist.
 
 ---
 
