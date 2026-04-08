@@ -112,14 +112,9 @@ Slots on instances are NOT regular frames. Special rules apply:
 
 ## Naming Conventions
 
-| Element | Convention | Example |
-|---|---|---|
-| Component sets | PascalCase | `Drawer Form Field` |
-| Sub-components | Slash namespacing | `Drawer/ProgressBar` |
-| Variants | Property=Value pairs | `Type=Text, State=Default` |
-| Layers | Semantic names | `Body Content`, `Role Cards`, `ButtonRow` |
+Naming conventions (component sets, sub-components, variants, layers, variables) are defined in the active conventions source — either the project's `conventionsPath` from `figma-config.json` or the shared defaults at `figma-workspace/references/conventions.md`.
 
-**Never:** `Container`, `Frame 1`, `Group 2`, `Rectangle 4`
+Consult that source before creating any component, variant, or layer. Do not invent names — apply the conventions in effect for this project.
 
 ---
 

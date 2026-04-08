@@ -427,6 +427,8 @@ for (const node of candidates) {
 
 ### 4d. Corner radii
 
+The threshold values below use the default scale from `figma-workspace/references/conventions.md`. If your project uses a different corner radius scale, check your active conventions source (`conventionsPath` in `figma-config.json`) and adjust the `getCornerVar` thresholds accordingly before running this script.
+
 ```js
 const COMPONENTS_PAGE = "Components"; // from figma-config.json > componentsPage
 
@@ -447,7 +449,10 @@ for (const [k, id] of Object.entries(varDefs)) {
   if (!V[k]) return { error: `Failed to load: ${k}` };
 }
 
-// value (px) → variable key — set thresholds from Phase 2 resolved values
+// value (px) → variable key
+// Default scale from figma-workspace/references/conventions.md.
+// If your project uses different values, update these thresholds to match
+// the corner radius scale in your active conventions source (conventionsPath).
 function getCornerVar(val) {
   if (Math.abs(val - 4)   < 0.5) return 'cornerXS';
   if (Math.abs(val - 8)   < 0.5) return 'cornerSmall';

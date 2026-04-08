@@ -52,6 +52,7 @@ Also check for `.claude/figma-config.json` in the project root. If present, it o
   "fileKey": "gXWSfKn5TelgViNAz8hEDe",
   "knownPages": ["Design System", "Pages", "Composed"],
   "componentsPage": "Components",
+  "conventionsPath": "docs/design-context/conventions.md",
   "clearBetweenSegments": true
 }
 ```
@@ -190,6 +191,14 @@ Output: what already exists where you're about to build, canvas positions of exi
 
 Consult `references/figma-mcp-patterns.md` when you need MCP tool selection rules, rate limit information, write operation patterns, or token architecture guidance. Skip this read if those topics aren't relevant to the current task.
 
+### Conventions
+
+Check `.claude/figma-config.json` for a `conventionsPath` field. If present, read that file — it is the authoritative source for component naming, variable naming, layer conventions, corner radius scale, and page structure for this project.
+
+If `conventionsPath` is absent, fall back to `figma-workspace/references/conventions.md` (the shared defaults).
+
+All operational skills (figma-builder, figma-bind-variables, etc.) defer to whichever conventions source is active. They do not encode conventions themselves.
+
 ### Project-specific context
 
 Check `.claude/figma-config.json` for a `contextDir` field:
@@ -283,3 +292,4 @@ The registry is the project's Figma knowledge base. Keep it current.
 - `references/snippets.md` — reusable code blocks for common operations
 - `references/decision-tree.md` — mermaid diagram of tool selection logic
 - `references/figma-mcp-patterns.md` — accumulated MCP patterns, token architecture, agentic workflow conventions
+- `references/conventions.md` — default design system conventions (naming, variables, token scales, page structure). Override via `conventionsPath` in `figma-config.json`

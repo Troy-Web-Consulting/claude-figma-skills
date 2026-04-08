@@ -1,29 +1,45 @@
 # Claude Figma Skills
 
-Reusable Claude Code skills for Figma work — built from real sessions on design system projects. These cover the full Figma-in-Claude workflow: session setup, component construction, spec cross-reference, token sync, variable binding, and library migration.
+Reusable Claude Code skills for Figma work — built from real sessions on design system projects at Troy Web. These cover the full Figma-in-Claude workflow: session setup, component construction, spec cross-reference, token sync, variable binding, and library migration.
 
-These are **not** the official Figma MCP skills. They're the layer above: opinionated workflows, hard-won patterns, and codified rules that the official skills don't provide.
+These are **not** the official Figma MCP skills. They're the layer above: operational workflows, hard-won API patterns, and codified technique that the official skills don't provide.
+
+**Design philosophy:** Skills encode *how to do things*, not *what things should be called*. Naming conventions, token scales, and structural standards live in a separate conventions source (either the shared defaults or a project-specific override) that skills defer to at runtime. This keeps the skills portable across projects.
+
+---
 
 ## Skills
 
 ### `figma-workspace`
-**Entry point for every Figma session.** Routes operations to the correct tool (`use_figma` vs Desktop Bridge), loads the project registry, gathers design system context, and loads project-specific knowledge before any work begins.
+**Entry point for every Figma session.** Routes operations to the correct tool (`use_figma` vs Desktop Bridge), loads the project registry, resolves the active conventions source, and gathers design system context before any work begins.
 
-Includes a reference file (`references/figma-mcp-patterns.md`) with accumulated patterns on MCP rate limits, write operations, token architecture, drift detection, and agentic design workflows.
+Always invoke this first — other skills assume the context it establishes.
 
 ### `figma-builder`
-**Build and modify Figma components via the Plugin API.** Covers variant schemas, property binding, `combineAsVariants`, naming conventions, slot operations, SVG import, instance rules, and batch operations with error recovery.
+**Build and modify Figma components via the Plugin API.** Covers variant schemas, property binding, `combineAsVariants`, slot operations, SVG import, instance rules, and batch operations with error recovery. Naming and structural conventions are deferred to the active conventions source.
 
 ### `figma-project-bridge`
 **Bridge non-Figma inputs into Figma.** Two modes:
 - **Spec Cross-Reference** — analyze a technical spec against existing Figma components, producing REUSE / EXTEND / CREATE / UNCLEAR verdicts
-- **Token Sync** — bidirectional sync between code tokens (CSS, Tailwind, JSON) and Figma variables, including audit mode
+- **Token Sync** — bidirectional sync between code tokens (CSS, Tailwind, JSON) and Figma variables, including drift detection and audit mode
 
 ### `figma-bind-variables`
-**Bind unbound fills, strokes, and corner radii to design system variables.** Four-phase workflow: discover variable IDs → resolve hex values → scan unbound properties → bind by property type. Recoverable if any phase fails.
+**Bind unbound fills, strokes, and corner radii to design system variables.** Five-phase workflow: discover variable IDs → resolve hex values → scan unbound properties → bind by property type → verify. Each phase is a separate script, recoverable independently.
 
 ### `figma-swap-library-to-local`
-**Replace published library instances with local equivalents.** Uses parent-down traversal to avoid mid-loop node invalidation. Handles non-obvious component name mappings and iterates until all swappable instances are resolved.
+**Replace published library instances with local equivalents.** Uses parent-down traversal to avoid mid-loop node invalidation. Handles non-obvious name mappings and iterates until all swappable instances are resolved.
+
+---
+
+## References (inside `figma-workspace/references/`)
+
+| File | Purpose |
+|---|---|
+| `conventions.md` | Default conventions: component naming, variable naming, layer structure, corner radius scale, page structure. Override per project via `conventionsPath` in `figma-config.json` |
+| `figma-mcp-patterns.md` | Accumulated MCP patterns: write operations, token architecture, rate limits, drift detection, Plugin API architecture |
+| `tool-inventory.md` | Complete table of all Figma MCP tools across both servers |
+| `decision-tree.md` | Mermaid diagram for tool selection |
+| `snippets.md` | Reusable code blocks for read and audit operations |
 
 ---
 
@@ -40,7 +56,7 @@ Includes a reference file (`references/figma-mcp-patterns.md`) with accumulated 
 ### 1. Clone this repo
 
 ```bash
-git clone https://github.com/jakecooper-troyweb/claude-figma-skills.git
+git clone https://github.com/troyweb/claude-figma-skills.git
 ```
 
 ### 2. Symlink skills into your project
@@ -57,7 +73,7 @@ ln -s /path/to/claude-figma-skills/figma-bind-variables your-project/.claude/ski
 ln -s /path/to/claude-figma-skills/figma-swap-library-to-local your-project/.claude/skills/figma-swap-library-to-local
 ```
 
-Start with `figma-workspace` — it's the prerequisite for everything else.
+`figma-workspace` is required — it's the prerequisite for every other skill.
 
 ### 3. Create `.claude/figma-config.json` in your project
 
@@ -66,6 +82,8 @@ Start with `figma-workspace` — it's the prerequisite for everything else.
   "fileKey": "YOUR_FIGMA_FILE_KEY",
   "registryPath": "docs/figma-registry.json",
   "knownPages": ["Design System", "Components"],
+  "componentsPage": "Components",
+  "conventionsPath": "docs/design-context/conventions.md",
   "clearBetweenSegments": true,
   "contextDir": "docs/design-context"
 }
@@ -76,24 +94,24 @@ Start with `figma-workspace` — it's the prerequisite for everything else.
 | Field | Required | Description |
 |---|---|---|
 | `fileKey` | Yes | Figma file key (from the URL: `figma.com/design/[fileKey]/...`) |
-| `registryPath` | Yes | Path to the local component registry (created after first session) |
+| `registryPath` | Yes | Path to the local component registry (created automatically after the first session) |
 | `knownPages` | Yes | Page names in the Figma file |
-| `clearBetweenSegments` | No | Whether to `/clear` context between major work phases (recommended: `true`) |
-| `contextDir` | No | Directory containing project-specific context: design decisions, prior specs, token formats. Can be any path — a local docs folder, a notes system, a shared drive |
+| `componentsPage` | No | Name of the page containing component definitions. Default: `"Components"` |
+| `conventionsPath` | No | Path to a project-specific conventions doc. When set, overrides the shared defaults in `figma-workspace/references/conventions.md` |
+| `clearBetweenSegments` | No | Whether to `/clear` context between major work phases. Recommended: `true` |
+| `contextDir` | No | Directory containing project-specific context: design decisions, prior specs, token formats. Can point to any directory — a local docs folder, a notes system, a shared drive |
 
-`contextDir` is optional. If absent, skills operate from the registry and live Figma reads alone.
+`conventionsPath` and `contextDir` are both optional. Without them, skills operate from the shared conventions defaults and the registry + live Figma reads.
 
 ---
 
-## How Skills Are Invoked
+## Conventions
 
-Claude Code loads skills automatically when they're in `.claude/skills/`. Invoke them by name in conversation:
+Naming conventions, variable naming patterns, token scales, and layer structure are defined in `figma-workspace/references/conventions.md` — the shared defaults used when no project overrides are set.
 
-- "Use figma-workspace to set up context for this file"
-- "Run figma-builder to add a new variant to the Button component set"
-- "Use figma-project-bridge to cross-reference this spec against our components"
+To override for a specific project, create a conventions doc at any path and point `conventionsPath` in `figma-config.json` to it. Skills read whichever source is active and defer to it — they do not hardcode conventions.
 
-`figma-workspace` should always run first — it establishes the session context that other skills depend on.
+This separation means you can update conventions for one project without touching the skills, and update a skill's process without disturbing any project's naming standards.
 
 ---
 
@@ -121,6 +139,12 @@ Created automatically after the first session. Append-only: only delete entries 
 
 ## Contributing
 
-These skills improve through real usage. If you run into a Plugin API edge case, a pattern that reliably works, or a fix for something that didn't — open a PR and add it to the relevant skill or its `references/` folder.
+These skills improve through real usage. If you find a Plugin API edge case, a pattern that reliably works, or a fix for something that didn't — open a PR.
 
-The `references/` folders are where accumulated knowledge lives. Prefer adding to those over modifying the main `SKILL.md` workflow unless the workflow itself is wrong.
+**Where to put things:**
+- New or corrected API behavior → relevant skill's `SKILL.md`
+- Reusable code blocks → `references/snippets.md` in the relevant skill
+- MCP patterns, rate limit behavior, Plugin API architecture → `figma-workspace/references/figma-mcp-patterns.md`
+- Default naming or structural conventions → `figma-workspace/references/conventions.md`
+
+Keep skills focused on process. Keep conventions in `conventions.md`. Keep accumulated API knowledge in the reference files.
