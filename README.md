@@ -56,7 +56,7 @@ Always invoke this first — other skills assume the context it establishes.
 ### 1. Clone this repo
 
 ```bash
-git clone https://github.com/troyweb/claude-figma-skills.git
+git clone https://github.com/Troy-Web-Consulting/claude-figma-skills.git
 ```
 
 ### 2. Symlink skills into your project
