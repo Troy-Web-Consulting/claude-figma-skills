@@ -25,15 +25,22 @@ python3 - << 'PYEOF'
 import json, os, sys
 
 cfg = json.load(open(".claude/figma-config.json"))
+scripts = cfg.get("scriptsPath")
+if not scripts:
+    print("ERROR: scriptsPath not set in .claude/figma-config.json", file=sys.stderr)
+    print("Set it to the absolute path of the scripts/ directory in the claude-figma-skills repo.")
+    sys.exit(1)
+
 print(f"registry={cfg.get('registryPath', 'docs/figma-registry.json')}")
 print(f"drift_out={cfg.get('driftManifestPath', 'docs/drift-manifest.yaml')}")
 print(f"tokens_dir={cfg.get('tokensDir', 'src/styles/tokens')}")
-scripts = cfg.get("scriptsPath") or "scripts"
 print(f"scripts={scripts}")
 PYEOF
 ```
 
-Set variables from output. If `tokensDir` does not exist, ask the user where the token files live before proceeding.
+Capture output into shell variables: `REGISTRY_PATH`, `DRIFT_OUT`, `TOKENS_DIR`, `SCRIPTS_PATH`.
+
+If `tokensDir` does not exist, ask the user where the token files live before proceeding.
 
 ---
 
@@ -60,8 +67,7 @@ Ask the user to confirm which files to diff against Figma before proceeding.
 Run `parse_tokens` on each token file. Merges into a single normalized-tokens.json:
 
 ```bash
-PYTHONPATH="$HOME/Code/claude-figma-skills/scripts" \
-  python3 -m figma_primitives parse-tokens \
+PYTHONPATH="$SCRIPTS_PATH" python3 -m figma_primitives parse-tokens \
   --input "$TOKENS_FILE" \
   --output /tmp/figma-drift/normalized-tokens.json
 ```
@@ -82,8 +88,7 @@ If parse fails, report the error verbatim — do not guess at the format.
 ## Step 4: Diff Against Registry
 
 ```bash
-PYTHONPATH="$HOME/Code/claude-figma-skills/scripts" \
-  python3 -m figma_primitives diff-tokens \
+PYTHONPATH="$SCRIPTS_PATH" python3 -m figma_primitives diff-tokens \
   --tokens /tmp/figma-drift/normalized-tokens.json \
   --registry "$REGISTRY_PATH" \
   --output "$DRIFT_OUT"

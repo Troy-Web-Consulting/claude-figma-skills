@@ -23,10 +23,17 @@ Five phases, always in order. Never skip phases on a fresh run. If re-running a 
 **After Phase 2 completes:** Save both Phase 1 and Phase 2 JSON results to files, then run the prep script to generate Phase 4 scripts automatically — no manual copy-paste of IDs or colorMap:
 
 ```bash
+# Resolve scriptsPath from config first:
+SCRIPTS_PATH=$(python3 -c "
+import json, sys
+cfg = json.load(open('.claude/figma-config.json'))
+p = cfg.get('scriptsPath')
+if not p: sys.exit('ERROR: scriptsPath not set in .claude/figma-config.json')
+print(p)
+")
+
 # Save phase outputs from Figma console as JSON files, then:
-# figma_primitives lives in ~/Code/claude-figma-skills/scripts/ — not installed, needs PYTHONPATH:
-PYTHONPATH="$HOME/Code/claude-figma-skills/scripts" \
-  python3 -m figma_primitives prep-bind \
+PYTHONPATH="$SCRIPTS_PATH" python3 -m figma_primitives prep-bind \
   --phase1 /tmp/figma-bind-phase1.json \
   --phase2 /tmp/figma-bind-phase2.json \
   --output-dir /tmp/figma-bind

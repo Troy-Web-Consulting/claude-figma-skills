@@ -111,10 +111,17 @@ If a needed component is missing from `idMap`, stop and resolve the gap before s
 **Use the inject script** to generate Phase 3 automatically from Phase 2 output — no manual idMap copy-paste:
 
 ```bash
+# Resolve scriptsPath from config first:
+SCRIPTS_PATH=$(python3 -c "
+import json, sys
+cfg = json.load(open('.claude/figma-config.json'))
+p = cfg.get('scriptsPath')
+if not p: sys.exit('ERROR: scriptsPath not set in .claude/figma-config.json')
+print(p)
+")
+
 # Save Phase 2 output from Figma console to a JSON file, then:
-# figma_primitives lives in ~/Code/claude-figma-skills/scripts/ — not installed, needs PYTHONPATH:
-PYTHONPATH="$HOME/Code/claude-figma-skills/scripts" \
-  python3 -m figma_primitives prep-idmap \
+PYTHONPATH="$SCRIPTS_PATH" python3 -m figma_primitives prep-idmap \
   --input /tmp/phase2-output.json \
   --node-id <target-node-id> \
   --output-dir /tmp/figma-swap

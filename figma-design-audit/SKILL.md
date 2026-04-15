@@ -29,7 +29,13 @@ cfg = json.load(open(".claude/figma-config.json"))
 registry = cfg.get("registryPath", "docs/figma-registry.json")
 design_doc = cfg.get("designDocPath") or cfg.get("conventionsPath")
 audit_out = cfg.get("auditReportPath", "docs/audit-report.yaml")
-scripts = cfg.get("scriptsPath") or "scripts"
+# scriptsPath must be set in figma-config.json — no safe default exists
+scripts = cfg.get("scriptsPath")
+if not scripts:
+    print("ERROR: scriptsPath not set in .claude/figma-config.json", file=sys.stderr)
+    print("Set it to the absolute path of the scripts/ directory in the claude-figma-skills repo.")
+    print("Example: ~/Code/claude-figma-skills/scripts")
+    sys.exit(1)
 
 print(f"registry={registry}")
 print(f"design_doc={design_doc or 'unset'}")
@@ -40,6 +46,8 @@ print(f"design_doc_exists={'yes' if (design_doc and os.path.exists(design_doc)) 
 PYEOF
 ```
 
+Capture output into shell variables: `REGISTRY_PATH`, `DESIGN_DOC`, `AUDIT_OUT`, `SCRIPTS_PATH`.
+
 If `registry_exists=no`: run `figma-workspace` first to generate the registry.
 If `design_doc_exists=no`: the structural checks still run, but prose-rule findings will be skipped. Tell the user.
 
@@ -47,11 +55,10 @@ If `design_doc_exists=no`: the structural checks still run, but prose-rule findi
 
 ## Step 2: Run Structural Audit Primitive
 
-`figma_primitives` lives in `~/Code/claude-figma-skills/scripts/`. It is not installed as a package — invoke it by setting `PYTHONPATH` or running from that directory:
+Use `$SCRIPTS_PATH` from Step 1 as `PYTHONPATH`. `figma_primitives` is not installed globally — it must be located via the path resolved from config:
 
 ```bash
-PYTHONPATH="$HOME/Code/claude-figma-skills/scripts" \
-  python3 -m figma_primitives audit \
+PYTHONPATH="$SCRIPTS_PATH" python3 -m figma_primitives audit \
   --registry "$REGISTRY_PATH" \
   --output "$AUDIT_OUT"
 ```
