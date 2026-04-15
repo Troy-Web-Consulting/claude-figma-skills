@@ -1,6 +1,7 @@
 ---
 name: figma-bind-variables
 description: Use when binding unbound fills, strokes, or corner radii in Figma component definitions to design system variables. Requires figma-use skill before any use_figma call.
+allowed-tools: Bash(python3 *) Bash(cat *) Bash(ls *)
 ---
 
 # Figma: Bind Variables to Component Properties
@@ -18,6 +19,20 @@ Discover IDs → Resolve hex values → Scan unbound → Bind by property type �
 ```
 
 Five phases, always in order. Never skip phases on a fresh run. If re-running a partial bind with already-validated IDs, phases 1–2 may be skipped.
+
+**After Phase 2 completes:** Save both Phase 1 and Phase 2 JSON results to files, then run the prep script to generate Phase 4 scripts automatically — no manual copy-paste of IDs or colorMap:
+
+```bash
+# Save phase outputs from Figma console as JSON files, then:
+python3 -m figma_primitives prep-bind \
+  --phase1 /tmp/figma-bind-phase1.json \
+  --phase2 /tmp/figma-bind-phase2.json \
+  --output-dir /tmp/figma-bind
+# → writes /tmp/figma-bind/phase4a-text-fills.js, phase4b-surface-fills.js, etc.
+# → writes /tmp/figma-bind/SUMMARY.md with full variable mapping
+```
+
+The script reads varDefs from Phase 1 (ID discovery) and resolved hex values from Phase 2, then generates all four Phase 4 scripts with `varDefs` and `colorMap` pre-populated. Only run Phase 4 scripts manually when the prep script reports warnings (ambiguous hex, failed IDs).
 
 **Stop and confirm with the user before binding when:**
 - A color has no obvious variable match by hex value
@@ -427,7 +442,7 @@ for (const node of candidates) {
 
 ### 4d. Corner radii
 
-The threshold values below use the default scale from `figma-workspace/references/conventions.md`. If your project uses a different corner radius scale, check your active conventions source (`conventionsPath` in `figma-config.json`) and adjust the `getCornerVar` thresholds accordingly before running this script.
+The threshold values below use the default scale from the starter `templates/design.md`. Check your project's active `design.md` (path in `designDocPath`) — if it declares a different corner radius scale, adjust the `getCornerVar` thresholds accordingly before running this script.
 
 ```js
 const COMPONENTS_PAGE = "Components"; // from figma-config.json > componentsPage
@@ -450,9 +465,9 @@ for (const [k, id] of Object.entries(varDefs)) {
 }
 
 // value (px) → variable key
-// Default scale from figma-workspace/references/conventions.md.
-// If your project uses different values, update these thresholds to match
-// the corner radius scale in your active conventions source (conventionsPath).
+// Default scale from templates/design.md.
+// If your project's design.md declares a different scale, update these
+// thresholds to match.
 function getCornerVar(val) {
   if (Math.abs(val - 4)   < 0.5) return 'cornerXS';
   if (Math.abs(val - 8)   < 0.5) return 'cornerSmall';

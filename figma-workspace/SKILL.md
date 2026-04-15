@@ -6,6 +6,7 @@ description: >
   project-specific knowledge from the vault. Triggers on: any Figma mention,
   Figma URL, "do this in Figma," "what components exist," "audit the DS,"
   or as a prerequisite before figma-builder or figma-project-bridge work.
+allowed-tools: Bash(cat *) Bash(jq *) Bash(python3 *) Bash(ls *) Bash(test *)
 ---
 
 # Figma Workspace
@@ -21,43 +22,111 @@ For binding unbound fills, strokes, and corner radii to design system variables,
 
 ---
 
-## Step 0: Bootstrap Check (first-use only)
+## Step 0: Contract Detection (first-use only)
 
-Before anything else, verify this project is wired up:
+Every Figma session operates over the **three-file contract**:
 
-1. Does `.claude/figma-config.json` exist? If not: ask the user for the Figma fileKey, then create it (schema below)
-2. Does `docs/figma-registry.json` exist? If not: create a skeleton after the first session
+| Layer | File | Role |
+|---|---|---|
+| Rules | `design.md` (path in `designDocPath`) | Naming, token scales, architecture — read every invocation. |
+| State | `figma-registry.json` (path in `registryPath`) | Cached component / variable / deprecation data. |
+| Config | `.claude/figma-config.json` | Points to the two above, declares `fileKey`, page structure. |
 
-Only run this check once — subsequent invocations skip straight to the registry lookup.
+Contract state (pre-loaded):
+
+```!
+CONFIG=".claude/figma-config.json"
+python3 - << 'PYEOF'
+import json, os, sys
+config_path = ".claude/figma-config.json"
+if not os.path.exists(config_path):
+    print("config_exists=no")
+    sys.exit(0)
+print("config_exists=yes")
+try:
+    d = json.load(open(config_path))
+except Exception as e:
+    print(f"config_error={e}")
+    sys.exit(0)
+design_doc = d.get("designDocPath") or d.get("conventionsPath")  # legacy fallback
+registry = d.get("registryPath", "docs/figma-registry.json")
+print(f"design_doc_path={design_doc or 'unset'}")
+print(f"design_doc_exists={'yes' if (design_doc and os.path.exists(design_doc)) else 'no'}")
+print(f"registry_path={registry}")
+print(f"registry_exists={'yes' if os.path.exists(registry) else 'no'}")
+if d.get("conventionsPath") and not d.get("designDocPath"):
+    print("contract_warning=legacy_conventionsPath_field_rename_to_designDocPath")
+PYEOF
+```
+
+Handle results as follows:
+
+- `config_exists=no` → ask the user for `fileKey`, copy `templates/figma-config.json` from this repo into `.claude/figma-config.json`, and fill in the values.
+- `design_doc_exists=no` → ask the user to copy `templates/design.md` to the path set in `designDocPath`. Skills cannot apply taste judgments without the rules layer. Do **not** fall back to a repo-local default.
+- `registry_exists=no` → create a skeleton registry after the first session (see Step 6).
+- `contract_warning=legacy_conventionsPath_field_rename_to_designDocPath` → tell the user the field has been renamed; keep working for this session but flag the fix.
+
+Run this check once per session — subsequent invocations skip straight to the registry lookup.
 
 ---
 
 ## Step 0b: Registry-First Lookup
 
-Before any tool call, check for a local registry in the project CWD:
+Project context (pre-loaded — no tool calls needed):
 
-1. Read `docs/figma-registry.json` if it exists
-2. If found, extract: `meta.fileKey`, component node IDs, variable collection IDs
-3. Announce what's already known: "Registry loaded — 30 components, 3 variable collections known"
+```!
+CONFIG=".claude/figma-config.json"
+REGISTRY_PATH=$([ -f "$CONFIG" ] && python3 -c "import json; d=json.load(open('$CONFIG')); print(d.get('registryPath','docs/figma-registry.json'))" 2>/dev/null || echo "docs/figma-registry.json")
+if [ -f "$REGISTRY_PATH" ]; then
+  python3 -c "
+import json, sys
+try:
+  d = json.load(open('$REGISTRY_PATH'))
+  meta = d.get('meta', {})
+  components = d.get('components', d)
+  collections = d.get('variableCollections', {})
+  # Count actual component entries (exclude 'meta' and 'variableCollections' keys)
+  comp_count = len([k for k in components if k not in ('meta','variableCollections')])
+  col_count = len(collections)
+  print(f'fileKey={meta.get(\"fileKey\", \"unknown\")}')
+  print(f'componentCount={comp_count}')
+  print(f'collectionCount={col_count}')
+  if col_count: print(f'collections={list(collections.keys())}')
+except Exception as e:
+  print(f'registry_error={e}')
+"
+else
+  echo "registry=not_found"
+fi
+if [ -f "$CONFIG" ]; then
+  python3 -c "
+import json
+try:
+  d = json.load(open('$CONFIG'))
+  for k,v in d.items(): print(f'{k}={v}')
+except: pass
+"
+fi
+```
 
 **Node IDs are permanent.** They are assigned at creation and never change, even across renames or moves. Registry entries do not expire — they only grow stale if the node was deleted.
 
 ### Project config
 
-Also check for `.claude/figma-config.json` in the project root. If present, it overrides defaults:
+The full schema lives in `templates/figma-config.schema.json`. Minimum shape:
 
 ```json
 {
-  "registryPath": "docs/figma-registry.json",
-  "fileKey": "gXWSfKn5TelgViNAz8hEDe",
-  "knownPages": ["Design System", "Pages", "Composed"],
+  "fileKey": "YOUR_FIGMA_FILE_KEY",
+  "knownPages": ["Design System", "Components"],
   "componentsPage": "Components",
-  "conventionsPath": "docs/design-context/conventions.md",
+  "designDocPath": "docs/design.md",
+  "registryPath": "docs/figma-registry.json",
   "clearBetweenSegments": true
 }
 ```
 
-If neither file exists, proceed to Step 1 and create the registry after the first session (see Step 6).
+All artifact paths (`driftManifestPath`, `auditReportPath`, `auditsDir`, etc.) are declared in the config and consumed by the new-generation skills (`figma-drift-scan`, `figma-design-audit`, `figma-design-sync`). See `templates/figma-config.json` for the canonical starter.
 
 ---
 
@@ -187,33 +256,42 @@ Output: what already exists where you're about to build, canvas positions of exi
 
 ## Step 4: Load Project Context
 
-### Universal patterns
+Load the rules layer (`design.md`) plus any supplementary context files. This is the only prose loaded per session — downstream skills defer to this rather than encoding rules of their own.
 
-Consult `references/figma-mcp-patterns.md` when you need MCP tool selection rules, rate limit information, write operation patterns, or token architecture guidance. Skip this read if those topics aren't relevant to the current task.
+```!
+CONFIG=".claude/figma-config.json"
+if [ -f "$CONFIG" ]; then
+  python3 - << 'PYEOF'
+import json, os, sys
+try:
+  d = json.load(open(".claude/figma-config.json"))
+  design_doc = d.get("designDocPath") or d.get("conventionsPath")  # legacy fallback
+  context_dir = d.get("contextDir", "")
 
-### Conventions
+  if design_doc and os.path.exists(design_doc):
+    print(f"=== DESIGN RULES ({design_doc}) ===")
+    print(open(design_doc).read())
+  else:
+    print(f"=== DESIGN RULES: MISSING ===")
+    print(f"designDocPath is '{design_doc or 'unset'}'. Skills cannot defer to the rules layer.")
+    print("Copy templates/design.md from the claude-figma-skills repo into your project and set designDocPath in .claude/figma-config.json.")
 
-Check `.claude/figma-config.json` for a `conventionsPath` field. If present, read that file — it is the authoritative source for component naming, variable naming, layer conventions, corner radius scale, and page structure for this project.
-
-If `conventionsPath` is absent, fall back to `figma-workspace/references/conventions.md` (the shared defaults).
-
-All operational skills (figma-builder, figma-bind-variables, etc.) defer to whichever conventions source is active. They do not encode conventions themselves.
-
-### Project-specific context
-
-Check `.claude/figma-config.json` for a `contextDir` field:
-
-```json
-{
-  "contextDir": "docs/design-context"
-}
+  if context_dir and os.path.isdir(context_dir):
+    print(f"\n=== PROJECT CONTEXT ({context_dir}/) ===")
+    for fname in os.listdir(context_dir):
+      fpath = os.path.join(context_dir, fname)
+      if os.path.isfile(fpath) and fname.endswith(".md"):
+        print(f"\n--- {fname} ---")
+        print(open(fpath).read())
+except Exception as e:
+  print(f"Context load error: {e}", file=sys.stderr)
+PYEOF
+fi
 ```
 
-If `contextDir` is set, read files from that directory. Look for: component naming conventions, design decisions, prior specs, token formats.
+All operational skills (`figma-builder`, `figma-bind-variables`, `figma-drift-scan`, etc.) defer to whichever `design.md` is active. They do not encode taste, naming, or scale defaults themselves.
 
-If `contextDir` is absent, skip this step — proceed from registry and live Figma reads alone.
-
-**`contextDir` can point anywhere**: a project docs folder, a vault directory, a shared drive path — whatever the team uses for project context. Set it once in `.claude/figma-config.json`, never hardcode paths in the skill.
+For MCP tool selection rules, rate limit info, and token architecture guidance, consult `references/figma-mcp-patterns.md` — only if those topics are relevant to the current task.
 
 ---
 
@@ -292,4 +370,5 @@ The registry is the project's Figma knowledge base. Keep it current.
 - `references/snippets.md` — reusable code blocks for common operations
 - `references/decision-tree.md` — mermaid diagram of tool selection logic
 - `references/figma-mcp-patterns.md` — accumulated MCP patterns, token architecture, agentic workflow conventions
-- `references/conventions.md` — default design system conventions (naming, variables, token scales, page structure). Override via `conventionsPath` in `figma-config.json`
+
+**Rules layer (`design.md`)** lives in the consuming project, not in this skill. See `templates/design.md` in the `claude-figma-skills` repo root for the starter template; the path is declared per-project via `designDocPath` in `.claude/figma-config.json`.

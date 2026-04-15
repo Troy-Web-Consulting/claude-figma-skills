@@ -1,6 +1,7 @@
 ---
 name: figma-swap-library-to-local
 description: Use when a Figma section or frame contains instances sourced from a published library that need to be replaced with local equivalents in the current file.
+allowed-tools: Bash(python3 *) Bash(cat *) Bash(ls *)
 ---
 
 # Figma: Swap Library Components to Local
@@ -107,7 +108,21 @@ If a needed component is missing from `idMap`, stop and resolve the gap before s
 
 ## Phase 3 — Parent-down swap
 
-Paste the `idMap` literal from Phase 2 into this script.
+**Use the inject script** to generate Phase 3 automatically from Phase 2 output — no manual idMap copy-paste:
+
+```bash
+# Save Phase 2 output from Figma console to a JSON file, then:
+python3 -m figma_primitives prep-idmap \
+  --input /tmp/phase2-output.json \
+  --node-id <target-node-id> \
+  --output-dir /tmp/figma-swap
+# → writes /tmp/figma-swap/phase3-swap.js  (paste into Figma console)
+# → writes /tmp/figma-swap/SUMMARY.md      (lists all mapped components)
+```
+
+Node ID format: convert URL `1234-5678` → `1234:5678` (the script handles this automatically).
+
+Alternatively, paste the `idMap` literal from Phase 2 manually into this script:
 
 **Why parent-down:** `findAll` returns nodes depth-first. Swapping a parent mid-loop invalidates its children's IDs — they were children of the old remote node, not the new local one. Filtering to outermost-only avoids this entirely.
 

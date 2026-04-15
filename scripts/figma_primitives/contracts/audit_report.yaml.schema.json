@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "audit_report",
+  "title": "Audit Report",
+  "description": "Output of figma_primitives scan-unbound + figma-design-audit skill. Documents unbound properties and naming violations.",
+  "type": "object",
+  "required": ["scanDate", "summary"],
+  "properties": {
+    "scanDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "sourceFile": {
+      "type": "string",
+      "description": "Path to the Figma export JSON that was scanned."
+    },
+    "summary": {
+      "type": "object",
+      "required": ["nodesScanned", "unboundFills", "unboundStrokes", "unboundCorners"],
+      "properties": {
+        "nodesScanned":    { "type": "integer" },
+        "unboundFills":    { "type": "integer" },
+        "unboundStrokes":  { "type": "integer" },
+        "unboundCorners":  { "type": "integer" },
+        "namingViolations": { "type": "integer" },
+        "tierViolations":   { "type": "integer" }
+      },
+      "additionalProperties": true
+    },
+    "unboundFills": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["nodeId", "nodeName", "nodeType", "fillIndex", "hex"],
+        "properties": {
+          "nodeId":    { "type": "string" },
+          "nodeName":  { "type": "string" },
+          "nodeType":  { "type": "string" },
+          "fillIndex": { "type": "integer" },
+          "hex":       { "type": "string", "pattern": "^[0-9a-f]{6}$" },
+          "opacity":   { "type": "number" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "unboundStrokes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["nodeId", "nodeName", "nodeType", "strokeIndex", "hex"],
+        "properties": {
+          "nodeId":      { "type": "string" },
+          "nodeName":    { "type": "string" },
+          "nodeType":    { "type": "string" },
+          "strokeIndex": { "type": "integer" },
+          "hex":         { "type": "string", "pattern": "^[0-9a-f]{6}$" },
+          "opacity":     { "type": "number" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "unboundCorners": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["nodeId", "nodeName", "nodeType", "cornerRadius"],
+        "properties": {
+          "nodeId":       { "type": "string" },
+          "nodeName":     { "type": "string" },
+          "nodeType":     { "type": "string" },
+          "cornerRadius": { "type": "number" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "namingViolations": {
+      "type": "array",
+      "description": "Component or layer names that violate naming conventions from design.md (populated by figma-design-audit skill).",
+      "items": {
+        "type": "object",
+        "properties": {
+          "nodeId":   { "type": "string" },
+          "name":     { "type": "string" },
+          "issue":    { "type": "string" },
+          "expected": { "type": "string" }
+        }
+      }
+    },
+    "tierViolations": {
+      "type": "array",
+      "description": "Tokens referenced in ways that violate the two-tier primitive/semantic architecture.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "componentName": { "type": "string" },
+          "propertyName":  { "type": "string" },
+          "variableName":  { "type": "string" },
+          "issue":         { "type": "string" }
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

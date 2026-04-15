@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "normalized_tokens",
+  "title": "Normalized Tokens",
+  "description": "Output of figma_primitives parse-tokens. A flat list of design token objects.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["figmaName", "type", "value", "isAlias"],
+    "properties": {
+      "figmaName": {
+        "type": "string",
+        "description": "Slash-separated token name matching Figma variable path (e.g. 'color/brand/primary')."
+      },
+      "cssName": {
+        "type": "string",
+        "description": "Original CSS custom property name (present for css format input only)."
+      },
+      "twKey": {
+        "type": "string",
+        "description": "Original Tailwind key path (present for tailwind format input only)."
+      },
+      "sdPath": {
+        "type": "string",
+        "description": "Original Style Dictionary / Tokens Studio dot-path (present for SD/TS format input only)."
+      },
+      "type": {
+        "type": "string",
+        "enum": ["COLOR", "FLOAT", "STRING"],
+        "description": "Figma variable type."
+      },
+      "value": {
+        "type": "string",
+        "description": "Normalized token value (rem converted to px, hex lowercased)."
+      },
+      "isAlias": {
+        "type": "boolean",
+        "description": "True if this token's value references another token (var(), {ref}, etc.)."
+      },
+      "aliasTarget": {
+        "type": ["string", "null"],
+        "description": "figmaName of the aliased token, or null if not an alias."
+      },
+      "description": {
+        "type": "string",
+        "description": "Token description from source file (empty string if not available)."
+      },
+      "resolvedValue": {
+        "type": ["string", "null"],
+        "description": "Terminal value after following alias chain (added by resolve-aliases). Null if circular or unresolved."
+      },
+      "resolvedChain": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Ordered list of figmaName hops from this token to the terminal (added by resolve-aliases)."
+      },
+      "circularAlias": {
+        "type": "boolean",
+        "description": "True if this token is part of a circular alias chain (added by resolve-aliases)."
+      }
+    },
+    "additionalProperties": false
+  }
+}

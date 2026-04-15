@@ -1,0 +1,136 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/Troy-Web-Consulting/claude-figma-skills/templates/figma-registry.schema.json",
+  "title": "figma-registry.json",
+  "description": "The state layer of the three-file contract. Cached Figma knowledge — component IDs, variable collections, deprecation maps, audit triage rules. Append-only; only delete entries when the underlying Figma node is confirmed removed.",
+  "type": "object",
+  "required": ["meta"],
+  "additionalProperties": false,
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["fileKey"],
+      "properties": {
+        "fileKey": { "type": "string" },
+        "branchKey": { "type": ["string", "null"] },
+        "scanDate": {
+          "type": "string",
+          "format": "date",
+          "description": "ISO date of last full registry regeneration."
+        },
+        "page": {
+          "type": "string",
+          "description": "Page the registry was scanned from (usually the components page)."
+        },
+        "note": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "sections": {
+      "type": "array",
+      "description": "Named layout sections on the components page.",
+      "items": {
+        "type": "object",
+        "required": ["id", "name"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "components": {
+      "type": "array",
+      "description": "All components and component sets discovered on the components page. Accepts either a flat array of entries (mye-ui shape) or a name-keyed object (legacy shape).",
+      "items": {
+        "type": "object",
+        "required": ["id", "name"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Figma node ID (format: XXX:YYY)."
+          },
+          "key": {
+            "type": "string",
+            "description": "Published component key. Stable across sessions; use for importComponentByKeyAsync."
+          },
+          "name": { "type": "string" },
+          "section": {
+            "type": "string",
+            "description": "Name of the layout section this component belongs to."
+          },
+          "type": {
+            "type": "string",
+            "enum": ["COMPONENT", "COMPONENT_SET", "INSTANCE"]
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "variables": {
+      "type": "object",
+      "description": "Cached variable lookups keyed by collection. Avoid calling get_variable_defs on the whole file; populate this on first access and reuse.",
+      "properties": {
+        "collections": {
+          "type": "object",
+          "description": "Map of collection name → VariableCollectionId.",
+          "additionalProperties": { "type": "string" }
+        },
+        "color": {
+          "type": "object",
+          "description": "Map of variable name (e.g. Color/Text/Text-Default) → resolved hex value."
+        },
+        "spacing": {
+          "type": "object",
+          "description": "Map of variable name → resolved numeric value (px)."
+        },
+        "corners": {
+          "type": "object",
+          "description": "Map of variable name → resolved numeric value (px)."
+        }
+      },
+      "additionalProperties": true
+    },
+    "versionMap": {
+      "type": "object",
+      "description": "Component deprecation history. Used by figma-swap-library-to-local to resolve non-obvious name mappings.",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["current", "deprecated"],
+        "properties": {
+          "current": {
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+              "key": { "type": "string" },
+              "name": { "type": "string" }
+            }
+          },
+          "deprecated": {
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+              "key": { "type": "string" },
+              "name": { "type": "string" }
+            }
+          },
+          "migration": { "type": "string" }
+        }
+      }
+    },
+    "bindIgnoreRules": {
+      "type": "array",
+      "description": "Persistent audit triage: values that have been reviewed and intentionally left unbound. Consumed by audit skills to avoid re-flagging.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "pattern": { "type": "string" },
+          "property": { "type": "string" },
+          "reason": { "type": "string" },
+          "addedDate": { "type": "string", "format": "date" }
+        },
+        "additionalProperties": true
+      }
+    }
+  }
+}

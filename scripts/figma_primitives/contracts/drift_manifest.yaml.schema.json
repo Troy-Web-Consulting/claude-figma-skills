@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "drift_manifest",
+  "title": "Drift Manifest",
+  "description": "Output of figma_primitives diff-tokens. Documents drift between code tokens and Figma registry.",
+  "type": "object",
+  "required": ["scanDate", "summary", "drift", "new", "orphan", "issues"],
+  "properties": {
+    "scanDate": {
+      "type": "string",
+      "format": "date",
+      "description": "ISO 8601 date of the scan (YYYY-MM-DD)."
+    },
+    "sourceFile": {
+      "type": "string",
+      "description": "Path to the input normalized-tokens.json."
+    },
+    "registryFile": {
+      "type": "string",
+      "description": "Path to the figma-registry.json used for comparison."
+    },
+    "summary": {
+      "type": "object",
+      "required": ["total", "match", "drift", "new", "orphan", "issues"],
+      "properties": {
+        "total":   { "type": "integer", "description": "Total tokens scanned." },
+        "match":   { "type": "integer", "description": "Tokens matching Figma registry exactly." },
+        "drift":   { "type": "integer", "description": "Tokens with mismatched values." },
+        "new":     { "type": "integer", "description": "Tokens in code but not in Figma." },
+        "orphan":  { "type": "integer", "description": "Tokens in Figma registry but not in code." },
+        "issues":  { "type": "integer", "description": "Total structural issues found." }
+      },
+      "additionalProperties": false
+    },
+    "drift": {
+      "type": "array",
+      "description": "Tokens where code value ≠ Figma registry value.",
+      "items": {
+        "type": "object",
+        "required": ["name", "codeValue", "figmaValue"],
+        "properties": {
+          "name":       { "type": "string" },
+          "codeValue":  { "type": "string" },
+          "figmaValue": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "new": {
+      "type": "array",
+      "description": "Tokens defined in code but absent from the Figma registry.",
+      "items": {
+        "type": "object",
+        "required": ["name", "value", "type"],
+        "properties": {
+          "name":  { "type": "string" },
+          "value": { "type": "string" },
+          "type":  { "type": "string", "enum": ["COLOR", "FLOAT", "STRING"] }
+        },
+        "additionalProperties": false
+      }
+    },
+    "orphan": {
+      "type": "array",
+      "description": "Variables in the Figma registry but absent from code tokens.",
+      "items": {
+        "type": "object",
+        "required": ["name", "value"],
+        "properties": {
+          "name":  { "type": "string" },
+          "value": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "issues": {
+      "type": "object",
+      "properties": {
+        "duplicateValues": {
+          "type": "array",
+          "description": "Multiple non-alias COLOR tokens resolving to the same hex value.",
+          "items": {
+            "type": "object",
+            "required": ["value", "names"],
+            "properties": {
+              "value": { "type": "string" },
+              "names": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        "circularAliases": {
+          "type": "array",
+          "description": "Token names involved in circular alias chains.",
+          "items": { "type": "string" }
+        },
+        "missingSemanticTokens": {
+          "type": "array",
+          "description": "Primitive tokens (no slash in name) that have no semantic alias pointing at them.",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

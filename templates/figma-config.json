@@ -1,0 +1,23 @@
+{
+  "$schema": "../templates/figma-config.schema.json",
+  "fileKey": "YOUR_FIGMA_FILE_KEY",
+  "branchKey": null,
+  "knownPages": ["Design System", "Components"],
+  "componentsPage": "Components",
+
+  "designDocPath": "docs/design.md",
+  "registryPath": "docs/figma-registry.json",
+
+  "auditsDir": "docs/audits",
+  "driftManifestPath": "docs/drift-manifest.yaml",
+  "auditReportPath": "docs/audit-report.yaml",
+  "parityReportPath": "docs/parity-report.md",
+
+  "tokensDir": "src/styles/tokens",
+  "tailwindThemePath": "src/styles/tailwind-theme.css",
+
+  "contextDir": "docs/design-context",
+  "scriptsPath": null,
+
+  "clearBetweenSegments": true
+}

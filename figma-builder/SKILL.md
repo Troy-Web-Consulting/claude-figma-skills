@@ -6,6 +6,7 @@ description: >
   conventions, slot operations, SVG import, instance rules, and batch
   operations. Triggers on: "create a component," "add a variant," "build this
   in Figma," "update all," "bulk," or any component set modification.
+allowed-tools: Bash(cat *) Bash(ls *)
 ---
 
 # Figma Builder
@@ -112,9 +113,9 @@ Slots on instances are NOT regular frames. Special rules apply:
 
 ## Naming Conventions
 
-Naming conventions (component sets, sub-components, variants, layers, variables) are defined in the active conventions source — either the project's `conventionsPath` from `figma-config.json` or the shared defaults at `figma-workspace/references/conventions.md`.
+Naming conventions (component sets, sub-components, variants, layers, variables) live in the project's `design.md` — the rules layer of the three-file contract, located at the path set in `designDocPath` in `.claude/figma-config.json`.
 
-Consult that source before creating any component, variant, or layer. Do not invent names — apply the conventions in effect for this project.
+`figma-workspace` loads `design.md` at the start of every session. Consult it before creating any component, variant, or layer. Do not invent names — apply the conventions in effect for this project. If `design.md` is missing, stop and ask the user to create it from `templates/design.md`.
 
 ---
 

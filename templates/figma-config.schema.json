@@ -1,0 +1,79 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/Troy-Web-Consulting/claude-figma-skills/templates/figma-config.schema.json",
+  "title": "figma-config.json",
+  "description": "Per-project configuration consumed by every Figma skill. Declares the Figma file, the paths that form the three-file contract, and artifact locations.",
+  "type": "object",
+  "required": ["fileKey", "designDocPath", "registryPath"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "fileKey": {
+      "type": "string",
+      "description": "Figma file key from the URL: figma.com/design/[fileKey]/..."
+    },
+    "branchKey": {
+      "type": ["string", "null"],
+      "description": "Optional branch key if working on a Figma branch. Used as the effective fileKey for MCP calls when set."
+    },
+    "knownPages": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Page names in the Figma file. Used by skills for page routing and audits."
+    },
+    "componentsPage": {
+      "type": "string",
+      "default": "Components",
+      "description": "Name of the page that holds component definitions."
+    },
+    "designDocPath": {
+      "type": "string",
+      "description": "Path to the project's design.md — the rules layer of the three-file contract."
+    },
+    "registryPath": {
+      "type": "string",
+      "description": "Path to the project's figma-registry.json — the state layer of the three-file contract."
+    },
+    "auditsDir": {
+      "type": "string",
+      "default": "docs/audits",
+      "description": "Directory where per-page audit artifacts are persisted."
+    },
+    "driftManifestPath": {
+      "type": "string",
+      "default": "docs/drift-manifest.yaml",
+      "description": "Path where figma-drift-scan writes its YAML output."
+    },
+    "auditReportPath": {
+      "type": "string",
+      "default": "docs/audit-report.yaml",
+      "description": "Path where figma-design-audit writes its YAML output."
+    },
+    "parityReportPath": {
+      "type": "string",
+      "default": "docs/parity-report.md",
+      "description": "Path where figma-design-sync writes its human-readable parity report."
+    },
+    "tokensDir": {
+      "type": "string",
+      "description": "Directory holding project token files (CSS / JSON / YAML)."
+    },
+    "tailwindThemePath": {
+      "type": ["string", "null"],
+      "description": "Optional path to the Tailwind theme CSS, if the project uses Tailwind."
+    },
+    "contextDir": {
+      "type": ["string", "null"],
+      "description": "Optional directory of project-specific context documents (design decisions, prior specs, etc.)."
+    },
+    "scriptsPath": {
+      "type": ["string", "null"],
+      "description": "Optional override for the location of the figma_primitives Python package. Defaults to the claude-figma-skills repo bundled scripts/."
+    },
+    "clearBetweenSegments": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether the skill should /clear context between major work phases."
+    }
+  }
+}
