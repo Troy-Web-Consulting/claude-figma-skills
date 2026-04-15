@@ -32,10 +32,9 @@ Every Figma session operates over the **three-file contract**:
 | State | `figma-registry.json` (path in `registryPath`) | Cached component / variable / deprecation data. |
 | Config | `.claude/figma-config.json` | Points to the two above, declares `fileKey`, page structure. |
 
-Contract state (pre-loaded):
+Run this now to check contract state:
 
-```!
-CONFIG=".claude/figma-config.json"
+```bash
 python3 - << 'PYEOF'
 import json, os, sys
 config_path = ".claude/figma-config.json"
@@ -72,9 +71,9 @@ Run this check once per session — subsequent invocations skip straight to the 
 
 ## Step 0b: Registry-First Lookup
 
-Project context (pre-loaded — no tool calls needed):
+Run this now to load project context:
 
-```!
+```bash
 CONFIG=".claude/figma-config.json"
 REGISTRY_PATH=$([ -f "$CONFIG" ] && python3 -c "import json; d=json.load(open('$CONFIG')); print(d.get('registryPath','docs/figma-registry.json'))" 2>/dev/null || echo "docs/figma-registry.json")
 if [ -f "$REGISTRY_PATH" ]; then
@@ -85,7 +84,6 @@ try:
   meta = d.get('meta', {})
   components = d.get('components', d)
   collections = d.get('variableCollections', {})
-  # Count actual component entries (exclude 'meta' and 'variableCollections' keys)
   comp_count = len([k for k in components if k not in ('meta','variableCollections')])
   col_count = len(collections)
   print(f'fileKey={meta.get(\"fileKey\", \"unknown\")}')
@@ -258,10 +256,8 @@ Output: what already exists where you're about to build, canvas positions of exi
 
 Load the rules layer (`design.md`) plus any supplementary context files. This is the only prose loaded per session — downstream skills defer to this rather than encoding rules of their own.
 
-```!
-CONFIG=".claude/figma-config.json"
-if [ -f "$CONFIG" ]; then
-  python3 - << 'PYEOF'
+```bash
+python3 - << 'PYEOF'
 import json, os, sys
 try:
   d = json.load(open(".claude/figma-config.json"))
@@ -286,7 +282,6 @@ try:
 except Exception as e:
   print(f"Context load error: {e}", file=sys.stderr)
 PYEOF
-fi
 ```
 
 All operational skills (`figma-builder`, `figma-bind-variables`, `figma-drift-scan`, etc.) defer to whichever `design.md` is active. They do not encode taste, naming, or scale defaults themselves.
