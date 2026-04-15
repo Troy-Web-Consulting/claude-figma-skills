@@ -55,10 +55,13 @@ Ask the user to confirm which files to diff against Figma before proceeding.
 
 ## Step 3: Parse Tokens
 
+`figma_primitives` lives in `~/Code/claude-figma-skills/scripts/` and is not installed — always prefix calls with `PYTHONPATH`:
+
 Run `parse_tokens` on each token file. Merges into a single normalized-tokens.json:
 
 ```bash
-python3 -m figma_primitives parse-tokens \
+PYTHONPATH="$HOME/Code/claude-figma-skills/scripts" \
+  python3 -m figma_primitives parse-tokens \
   --input "$TOKENS_FILE" \
   --output /tmp/figma-drift/normalized-tokens.json
 ```
@@ -79,7 +82,8 @@ If parse fails, report the error verbatim — do not guess at the format.
 ## Step 4: Diff Against Registry
 
 ```bash
-python3 -m figma_primitives diff-tokens \
+PYTHONPATH="$HOME/Code/claude-figma-skills/scripts" \
+  python3 -m figma_primitives diff-tokens \
   --tokens /tmp/figma-drift/normalized-tokens.json \
   --registry "$REGISTRY_PATH" \
   --output "$DRIFT_OUT"

@@ -112,7 +112,9 @@ If a needed component is missing from `idMap`, stop and resolve the gap before s
 
 ```bash
 # Save Phase 2 output from Figma console to a JSON file, then:
-python3 -m figma_primitives prep-idmap \
+# figma_primitives lives in ~/Code/claude-figma-skills/scripts/ — not installed, needs PYTHONPATH:
+PYTHONPATH="$HOME/Code/claude-figma-skills/scripts" \
+  python3 -m figma_primitives prep-idmap \
   --input /tmp/phase2-output.json \
   --node-id <target-node-id> \
   --output-dir /tmp/figma-swap

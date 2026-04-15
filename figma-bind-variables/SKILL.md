@@ -24,7 +24,9 @@ Five phases, always in order. Never skip phases on a fresh run. If re-running a 
 
 ```bash
 # Save phase outputs from Figma console as JSON files, then:
-python3 -m figma_primitives prep-bind \
+# figma_primitives lives in ~/Code/claude-figma-skills/scripts/ — not installed, needs PYTHONPATH:
+PYTHONPATH="$HOME/Code/claude-figma-skills/scripts" \
+  python3 -m figma_primitives prep-bind \
   --phase1 /tmp/figma-bind-phase1.json \
   --phase2 /tmp/figma-bind-phase2.json \
   --output-dir /tmp/figma-bind

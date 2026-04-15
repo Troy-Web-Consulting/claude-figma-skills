@@ -47,8 +47,11 @@ If `design_doc_exists=no`: the structural checks still run, but prose-rule findi
 
 ## Step 2: Run Structural Audit Primitive
 
+`figma_primitives` lives in `~/Code/claude-figma-skills/scripts/`. It is not installed as a package — invoke it by setting `PYTHONPATH` or running from that directory:
+
 ```bash
-python3 -m figma_primitives audit \
+PYTHONPATH="$HOME/Code/claude-figma-skills/scripts" \
+  python3 -m figma_primitives audit \
   --registry "$REGISTRY_PATH" \
   --output "$AUDIT_OUT"
 ```
