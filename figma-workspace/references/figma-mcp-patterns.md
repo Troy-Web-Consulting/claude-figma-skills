@@ -36,8 +36,8 @@ Writing to the Figma canvas via `use_figma` (remote MCP, runs Plugin API JavaScr
 
 ### Tool Selection
 
-- **`use_figma` is the default write tool** — Figma's remote MCP server for all canvas creation and modification. Runs Plugin API JS without requiring the desktop app
-- **`figma-console:figma_execute` (Desktop Bridge) as fallback** — Observed to handle some edge cases more reliably than the remote path, particularly slot manipulation on pre-existing instances (ghost node problem) and post-write screenshot verification. Both tools execute the same Plugin API. Requires the Figma Desktop plugin to be running
+- **`use_figma` is the default write tool** — Figma's remote MCP server for all canvas creation and modification. Runs Plugin API JS without requiring the desktop app. Best for 1–4 high-level operations where context loading cost is acceptable
+- **`figma-console:figma_execute` (Desktop Bridge) for granular or bulk writes** — Preferred when: (1) 5+ discrete write operations in a session — `use_figma` loads file context per call, figma-console's granular tools are significantly cheaper per-operation; (2) slot manipulation on pre-existing instances (ghost node problem); (3) post-write screenshot verification where cloud cache lag is unacceptable; (4) `use_figma` silently fails. Both tools execute the same Plugin API. Requires the Figma Desktop plugin to be running
 
 ### Before Building Anything
 

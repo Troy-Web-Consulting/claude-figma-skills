@@ -146,12 +146,13 @@ See `references/tool-inventory.md` for the complete tool table. Quick decision:
 - 50k character code limit per call
 - Requires fileKey every call
 
-**ESCALATE to `figma-console:figma_execute` (Desktop Bridge) ONLY when:**
+**ESCALATE to `figma-console:figma_execute` (Desktop Bridge) when:**
 - Slot manipulation on pre-existing instances (ghost node problem)
 - Immediate screenshot after a just-completed write (cloud cache lag)
 - `use_figma` silently fails mid-operation
+- **5+ discrete write operations in a session** — `use_figma` loads file context on every call; figma-console's granular tools (`figma_set_fills`, `figma_resize_node`, `figma_move_node`, etc.) are significantly cheaper per-operation for bulk iterative work and amortize the reconnect cost
 
-Both tools execute the same Plugin API. The escalation is based on observed reliability differences, not confirmed capability gaps. Desktop Bridge requires:
+Both tools execute the same Plugin API. The escalation is based on cost and reliability differences, not capability gaps. Desktop Bridge requires:
 1. Figma Desktop app open
 2. Desktop Bridge plugin running and showing "MCP Ready"
 3. `figma_reconnect` before first use and after heavy operations
@@ -201,11 +202,33 @@ Figma tool results accumulate in context for the entire session. Each result sta
 - A "segment" is a logical phase: discovery → design → review → another feature. Clear between them.
 - After any large read (screenshot, design context), assess whether the result is still needed before continuing
 
+**Break-even rule for subagents:** Each subagent spawn costs ~10-11k tokens of overhead (~$0.008 on Haiku, ~$0.030 on Sonnet). If a result would survive 3+ turns in main context, a Haiku subagent is cheaper. Single one-and-done lookups can stay inline.
+
 ### Screenshots
 
-- After `use_figma` writes: `get_screenshot` (REST API, may have brief cache lag)
-- After `figma_execute` writes: `figma_capture_screenshot` (plugin runtime, immediate)
+**Never take screenshots in main context.** Image tokens cannot be cached and re-bill on every subsequent turn. Always route through a Haiku subagent — the image is discarded when the subagent exits, only text findings return:
+
+```
+Agent({
+  model: "haiku",
+  prompt: "Take a screenshot of the current Figma canvas via figma_take_screenshot. Return only: (1) bullet list of visual issues (alignment, spacing, overflow, clipping, imbalance), (2) pass/fail verdict. Do not describe what looks correct."
+})
+```
+
+- After `use_figma` writes: use `get_screenshot` (REST API) inside the subagent
+- After `figma_execute` writes: use `figma_capture_screenshot` (plugin runtime) inside the subagent
 - Always target a specific nodeId — never screenshot the full page root
+
+**Mechanical lookups that return large payloads** also belong in Haiku subagents when the result would linger multi-turn:
+
+| Task | Return only |
+|---|---|
+| `figma_get_variables` | Variables matching the pattern — name→value pairs |
+| `figma_search_components` / `figma_get_library_components` | Matching names + nodeIds |
+| `figma_lint_design` / `figma_scan_code_accessibility` | Failing issues only, grouped by severity |
+| `figma_browse_tokens` | Tokens in target collection as flat name→value list |
+
+**Stay in main context (Sonnet):** design decisions, component architecture, code generation, orchestration.
 
 ### Instantiation
 
